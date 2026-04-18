@@ -1,5 +1,6 @@
-mss
-requests
-Pillow
-markdown
-jinja2
+# AutoGameVisionTester requirements
+mss                  # screenshot capture
+Pillow               # image handling
+pygetwindow          # find game window
+requests             # Grok API calls
+pynput               # global hotkey (Ctrl+Alt+S)
