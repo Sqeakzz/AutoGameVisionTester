@@ -1,6 +1,44 @@
+# === Sensitive Files ===
 config.json
+
+# === Python ===
 __pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# === Virtual Environment ===
+venv/
+ENV/
+env/
+.venv/
+
+# === Generated Folders (for this project) ===
 screenshots/
 reports/
-*.png
-venv/
+
+# === IDEs & Editors ===
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# === Logs ===
+*.log
