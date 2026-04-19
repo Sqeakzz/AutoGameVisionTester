@@ -5,10 +5,11 @@ from pathlib import Path
 import pygetwindow as gw
 
 def capture_game_window(window_title, output_folder):
-    """Capture game window by partial title match"""
+    """Capture game window by partial title match (works with Unreal, Unity, Godot, etc.)"""
     try:
-        # Find any window containing the title
-        windows = gw.getWindowsWithTitle(window_title)
+        # Find windows that contain the title (case insensitive)
+        windows = [w for w in gw.getAllWindows() if window_title.lower() in w.title.lower()]
+        
         if not windows:
             print(f"⚠️ No window found containing '{window_title}'")
             return None
@@ -16,10 +17,10 @@ def capture_game_window(window_title, output_folder):
         # Use the first matching window
         target_window = windows[0]
         
-        # Activate and get coordinates
+        # Activate window if needed
         if not target_window.isActive:
             target_window.activate()
-            time.sleep(0.2)  # small delay for focus
+            time.sleep(0.3)
         
         left, top, right, bottom = target_window.left, target_window.top, target_window.right, target_window.bottom
         
@@ -37,7 +38,7 @@ def capture_game_window(window_title, output_folder):
             filepath = Path(output_folder) / f"game_{timestamp}.png"
             img.save(filepath)
             
-            print(f"📸 Captured window: {target_window.title}")
+            print(f"📸 Captured: {target_window.title}")
             return filepath
             
     except Exception as e:

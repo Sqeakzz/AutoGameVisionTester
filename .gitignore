@@ -42,3 +42,4 @@ reports/
 
 # === Logs ===
 *.log
+history.json

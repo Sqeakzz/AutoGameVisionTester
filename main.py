@@ -11,11 +11,81 @@ import imagehash
 from utils.capture import capture_game_window
 from utils.grok_vision import analyze_screenshot
 from utils.report import generate_report
+import os
+import subprocess
+import pygetwindow as gw
 
 def load_config():
     with open("config.json", "r") as f:
         return json.load(f)
 
+def save_to_history(report_path, mode, high, medium, low, tokens):
+    """Save report metadata to history.json"""
+    history_file = Path("history.json")
+    
+    entry = {
+        "date": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "report_file": str(report_path),
+        "mode": mode,
+        "high_issues": high,
+        "medium_issues": medium,
+        "low_issues": low,
+        "tokens_used": tokens
+    }
+    
+    if history_file.exists():
+        with open(history_file, "r") as f:
+            history = json.load(f)
+    else:
+        history = []
+    
+    history.append(entry)
+    
+    # Keep only last 50 reports
+    if len(history) > 50:
+        history = history[-50:]
+    
+    with open(history_file, "w") as f:
+        json.dump(history, f, indent=2)
+
+def view_history():
+    """Display history and allow opening reports"""
+    history_file = Path("history.json")
+    
+    if not history_file.exists():
+        print("\nNo history found yet.")
+        return
+    
+    with open(history_file, "r") as f:
+        history = json.load(f)
+    
+    if not history:
+        print("\nNo reports in history.")
+        return
+    
+    print("\n=== Report History ===")
+    for i, entry in enumerate(history, 1):
+        print(f"{i}. {entry['date']} | {entry['mode']} | High: {entry['high_issues']} | Medium: {entry['medium_issues']} | Low: {entry['low_issues']} | Tokens: {entry['tokens_used']}")
+    
+    print("\nEnter number to open report, or 0 to go back:")
+    try:
+        choice = int(input("> ").strip())
+        if choice == 0:
+            return
+        if 1 <= choice <= len(history):
+            report_path = history[choice - 1]["report_file"]
+            if Path(report_path).exists():
+                print(f"\nOpening: {report_path}")
+                if os.name == 'nt':  # Windows
+                    os.startfile(report_path)
+                else:
+                    subprocess.run(['xdg-open', report_path])
+            else:
+                print("Report file not found.")
+        else:
+            print("Invalid choice.")
+    except:
+        print("Invalid input.")
 
 class StatusWindow:
     def __init__(self):
@@ -185,8 +255,21 @@ def run_preview_mode(config):
 
         if screenshots:
             print(f"\n📊 Analyzing {len(screenshots)} screenshots in **{mode.upper()}** mode...")
-            generate_report(screenshots, "reports", mode=mode, config=config)
-            print(f"✅ Batch report complete ({mode} mode)")
+            
+            result = generate_report(screenshots, "reports", mode=mode, config=config)
+            
+            if result:
+                save_to_history(
+                    report_path=result["path"],
+                    mode=mode,
+                    high=result["high"],
+                    medium=result["medium"],
+                    low=result["low"],
+                    tokens=result["tokens"]
+                )
+                print(f"✅ Batch report complete ({mode} mode)")
+            else:
+                print("Report generation failed.")
         else:
             print("No new screenshots were captured.")
 
@@ -200,6 +283,29 @@ def run_preview_mode(config):
     hotkey_listener.stop()
     capture_thread.join(timeout=3)
 
+def list_running_windows():
+    """List all currently open windows to help user find game title"""
+    try:
+        windows = gw.getAllWindows()
+        
+        if not windows:
+            print("\nNo windows detected.")
+            return
+            
+        print("\n=== Currently Open Windows ===")
+        count = 0
+        for window in windows:
+            if window.title.strip():  # Only show windows with titles
+                count += 1
+                print(f"{count}. {window.title}")
+        
+        if count == 0:
+            print("No titled windows found.")
+        else:
+            print(f"\nFound {count} windows. Use part of the title in your config.")
+            
+    except Exception as e:
+        print(f"Error listing windows: {e}")
 
 def main_menu():
     global config
@@ -209,8 +315,9 @@ def main_menu():
         print(f"1. Preview Mode ({res})")
         print("2. Edit Config")
         print("3. Clear Data")
-        print("4. Exit")
-        choice = input("Choose an option (1-4): ").strip()
+        print("4. View History")
+        print("5. Exit")
+        choice = input("Choose an option (1-5): ").strip()
 
         if choice == "1":
             run_preview_mode(config)
@@ -219,6 +326,8 @@ def main_menu():
         elif choice == "3":
             clear_data()
         elif choice == "4":
+            view_history()
+        elif choice == "5":
             print("Goodbye!")
             break
 
@@ -232,12 +341,17 @@ def edit_config():
         print("\n=== Current Config ===")
         for i, key in enumerate(keys, 1):
             print(f"  {i}. {key}: {config[key]}")
-        print("  7. Done")
+        print("  7. List Running Windows (to find game title)")
+        print("  8. Done")
 
-        choice = input("\nChoose option (1-7): ").strip()
+        choice = input("\nChoose option (1-8): ").strip()
+
+        if choice == "8":
+            break
 
         if choice == "7":
-            break
+            list_running_windows()
+            continue
 
         if choice == "5":
             print("\n=== Max Resolution ===")
