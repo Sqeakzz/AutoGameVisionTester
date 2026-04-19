@@ -1,12 +1,14 @@
 import time
 from pathlib import Path
 import json
-import sys
 from queue import Queue
 import threading
 import tkinter as tk
 from tkinter import ttk
 from pynput import keyboard
+import shutil
+from PIL import Image
+import imagehash
 from utils.capture import capture_game_window
 from utils.grok_vision import analyze_screenshot
 from utils.report import generate_report
@@ -58,47 +60,85 @@ class StatusWindow:
     def close(self):
         self.root.quit()
 
-def run_capture(config):
-    print(f"\n📸 Starting capture every {config['screenshot_interval']} seconds (non-blocking).")
-    print("   Live status bar opened at top-left.")
-    print("   Press Ctrl + Alt + S to stop and analyze.\n")
+def clear_data():
+    try:
+        shutil.rmtree("screenshots", ignore_errors=True)
+        shutil.rmtree("reports", ignore_errors=True)
+        Path("screenshots").mkdir(exist_ok=True)
+        Path("reports").mkdir(exist_ok=True)
+        print("✅ Cleared screenshots and reports folders.")
+    except Exception as e:
+        print(f"❌ Clear error: {e}")
+
+def run_preview_mode(config):
+    print(f"\n📸 Preview Mode — every {config['screenshot_interval']} seconds")
+    print(f"   Resolution: {config.get('max_resolution', '1280x720')}")
+    print("   Press Ctrl + Alt + S to trigger batch analysis.\n")
+    
+    # Make sure screenshots folder exists
+    Path("screenshots").mkdir(exist_ok=True)
     
     screenshot_queue = Queue()
     stop_event = threading.Event()
     status_win = StatusWindow()
-    
+    last_hash = None
+    hash_threshold = 18
+
     def capture_loop():
+        nonlocal last_hash
         while not stop_event.is_set():
-            start_time = time.time()
             try:
-                screenshot_path = capture_game_window(config["game_window_title"], "screenshots")
+                # Always save to screenshots/ folder
+                screenshot_path = capture_game_window(
+                    config["game_window_title"], 
+                    "screenshots"   # ← Fixed: always save here
+                )
                 if screenshot_path:
-                    screenshot_queue.put(screenshot_path)
-                    print(f"📸 Captured: {screenshot_path.name}")
-                    status_win.root.after(0, lambda c=screenshot_queue.qsize(): status_win.update_queue(c))
+                    img = Image.open(screenshot_path)
+
+                    # === Resolution Scaling ===
+                    res = config.get("max_resolution", "1280x720")
+                    try:
+                        max_width, max_height = map(int, res.split("x"))
+                    except:
+                        max_width, max_height = 1280, 720
+
+                    ratio = min(max_width / img.width, max_height / img.height)
+                    new_size = (int(img.width * ratio), int(img.height * ratio))
+                    img = img.resize(new_size, Image.LANCZOS)
+                    img.save(screenshot_path, "PNG")
+
+                    # Smart Capture (hash check)
+                    current_hash = imagehash.average_hash(img)
+                    if last_hash is None or (current_hash - last_hash) > hash_threshold:
+                        screenshot_queue.put(screenshot_path)
+                        last_hash = current_hash
+                        status_win.update_queue(screenshot_queue.qsize())
+                        print(f"📸 Captured + Kept → {screenshot_path.name}")
+                    else:
+                        screenshot_path.unlink()
+                        print(f"📸 Captured + Skipped (duplicate)")
+
             except Exception as e:
-                print(f"❌ Capture error: {e}")
-            
-            elapsed = time.time() - start_time
-            sleep_time = max(0.0, config["screenshot_interval"] - elapsed)
-            time.sleep(sleep_time)
-    
+                print(f"Capture error: {e}")
+
+            time.sleep(config["screenshot_interval"])
+
     capture_thread = threading.Thread(target=capture_loop, daemon=True)
     capture_thread.start()
-    
+
     def on_hotkey():
         if not stop_event.is_set():
             print("\n⏹️ Hotkey pressed - Starting batch analysis...")
             status_win.root.after(0, status_win.set_analyzing)
             stop_event.set()
-            # Schedule analysis + complete message after window closes
             status_win.root.after(100, lambda: perform_batch_analysis(status_win, screenshot_queue))
-    
+
     def perform_batch_analysis(status_win, screenshot_queue):
         screenshots = []
         while not screenshot_queue.empty():
             screenshots.append(screenshot_queue.get())
-        
+
         if screenshots:
             print(f"📊 Analyzing {len(screenshots)} screenshots in batch...")
             generate_report(screenshots, "reports")
@@ -106,63 +146,96 @@ def run_capture(config):
             status_win.root.after(0, status_win.set_complete)
             status_win.root.after(2000, status_win.close)
         else:
-            print("No screenshots were captured.")
+            print("No new screenshots were captured.")
             status_win.root.after(0, status_win.close)
-    
+
     hotkey_listener = keyboard.GlobalHotKeys({'<ctrl>+<alt>+s': on_hotkey})
     hotkey_listener.start()
-    
+
     status_win.root.mainloop()
-    
+
     stop_event.set()
     hotkey_listener.stop()
     capture_thread.join(timeout=3)
 
 def main_menu():
+    global config
     while True:
-        config = load_config()
+        res = config.get("max_resolution", "1280x720")
         print("\n=== AutoGameVisionTester ===")
-        print("1. Start Capture")
+        print(f"1. Preview Mode ({res})")
         print("2. Edit Config")
-        print("3. Exit")
-        choice = input("Choose an option (1-3): ").strip()
+        print("3. Clear Data")
+        print("4. Exit")
+        choice = input("Choose an option (1-4): ").strip()
 
         if choice == "1":
-            run_capture(config)
+            run_preview_mode(config)
         elif choice == "2":
             edit_config()
         elif choice == "3":
-            print("Goodbye.")
-            sys.exit(0)
-        else:
-            print("Invalid option.")
+            clear_data()
+        elif choice == "4":
+            print("Goodbye!")
+            break
 
 def edit_config():
+    global config
     config = load_config()
     keys = list(config.keys())
-    print("\nCurrent Config:")
-    for i, key in enumerate(keys, 1):
-        print(f"  {i}. {key}: {config[key]}")
-    
-    choice = input("\nEnter number to edit (or 'done'): ").strip()
-    if choice.lower() == "done":
-        return
-    try:
-        idx = int(choice) - 1
-        if 0 <= idx < len(keys):
-            key = keys[idx]
-            new_value = input(f"New value for {key}: ").strip()
-            if key == "screenshot_interval":
-                config[key] = int(new_value)
+
+    while True:
+        print("\n=== Current Config ===")
+        for i, key in enumerate(keys, 1):
+            print(f"  {i}. {key}: {config[key]}")
+        print("  7. Done")
+
+        choice = input("\nChoose option (1-7): ").strip()
+
+        if choice == "7":
+            break
+
+        if choice == "5":
+            # === Max Resolution Preset Menu ===
+            print("\n=== Max Resolution ===")
+            print("1. Budget     (960x540)")
+            print("2. Balanced   (1280x720)")
+            print("3. Full Res   (1920x1080)")
+
+            res_choice = input("\nChoose resolution (1-3): ").strip()
+
+            if res_choice == "1":
+                config["max_resolution"] = "960x540"
+            elif res_choice == "2":
+                config["max_resolution"] = "1280x720"
+            elif res_choice == "3":
+                config["max_resolution"] = "1920x1080"
             else:
-                config[key] = new_value
-            with open("config.json", "w") as f:
-                json.dump(config, f, indent=2)
-            print("Config updated.")
+                print("Invalid choice.")
+                continue
+
+            print(f"✅ Resolution set to {config['max_resolution']}")
+
         else:
-            print("Invalid number.")
-    except:
-        print("Invalid input.")
+            try:
+                idx = int(choice) - 1
+                if 0 <= idx < len(keys):
+                    key = keys[idx]
+                    new_value = input(f"New value for {key}: ").strip()
+                    if key == "screenshot_interval":
+                        config[key] = int(new_value)
+                    else:
+                        config[key] = new_value
+                    print("✅ Config updated.")
+                else:
+                    print("Invalid number.")
+            except:
+                print("Invalid input.")
+
+        # Save after every change
+        with open("config.json", "w") as f:
+            json.dump(config, f, indent=2)
 
 if __name__ == "__main__":
+    config = load_config()
     main_menu()

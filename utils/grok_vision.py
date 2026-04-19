@@ -1,11 +1,9 @@
 import base64
 import requests
-from pathlib import Path
 
-def analyze_screenshot(screenshot_path, api_key):
-    """Send screenshot to Grok-4 (multimodal)"""
+def analyze_screenshot(image_path, api_key, resolution="1280x720"):
     try:
-        with open(screenshot_path, "rb") as f:
+        with open(image_path, "rb") as f:
             base64_image = base64.b64encode(f.read()).decode("utf-8")
 
         headers = {
@@ -13,15 +11,9 @@ def analyze_screenshot(screenshot_path, api_key):
             "Content-Type": "application/json"
         }
 
-        payload = {
-            "model": "grok-4",
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": """You are a senior Unreal Engine QA tester with 10+ years shipping AAA titles. You take immense pride in your craft — you are one of the best in the industry at spotting the issues others miss and delivering clean, high-value feedback that actually makes games better.
+        prompt_text = f"""You are a senior Unreal Engine QA tester with 10+ years shipping AAA titles. You take immense pride in your craft — you are one of the best in the industry at spotting the issues others miss and delivering clean, high-value feedback that actually makes games better.
+                                        
+                                        Current resolution mode: {resolution} — adjust your detail expectations accordingly.
 
                                         Clear Goal: Deliver a concise yet thorough QA report that is immediately useful to developers. Be direct, professional, insightful, and no-nonsense. Give yourself room to speak naturally while staying focused and actionable. Speak with confidence and expertise — you know this engine inside out.
 
@@ -88,6 +80,16 @@ def analyze_screenshot(screenshot_path, api_key):
                                         - Suggested Fixes + Code Snippets:
 
                                         Describe what you see clearly and professionally. Be specific, balanced, and actionable."""
+
+        payload = {
+            "model": "grok-4",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": prompt_text
                         },
                         {
                             "type": "image_url",
@@ -97,7 +99,9 @@ def analyze_screenshot(screenshot_path, api_key):
                         }
                     ]
                 }
-            ]
+            ],
+            "max_tokens": 1500,
+            "temperature": 0.3
         }
 
         response = requests.post(
@@ -108,11 +112,10 @@ def analyze_screenshot(screenshot_path, api_key):
         )
 
         if response.status_code == 200:
-            return response.json()["choices"][0]["message"]["content"]
+            result = response.json()
+            return result["choices"][0]["message"]["content"]
         else:
-            print(f"API Error {response.status_code}: {response.text}")
-            return None
+            return f"API Error {response.status_code}: {response.text}"
 
     except Exception as e:
-        print(f"Vision error: {e}")
-        return None
+        return f"Error analyzing screenshot: {str(e)}"

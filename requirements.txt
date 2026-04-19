@@ -4,3 +4,4 @@ Pillow               # image handling
 pygetwindow          # find game window
 requests             # Grok API calls
 pynput               # global hotkey (Ctrl+Alt+S)
+imagehash

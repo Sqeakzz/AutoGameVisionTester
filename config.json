@@ -1,7 +1,8 @@
 {
-  "grok_api_key": "PLACEHOLDER",
-  "screenshot_interval": 15,
-  "game_window_title": "Unreal Physics",
+  "grok_api_key": "Your_Key_Here",
+  "screenshot_interval": 2,
+  "game_window_title": "Unreal",
   "output_folder": "reports",
+  "max_resolution": "960x540",
   "max_screenshots": 300
 }
