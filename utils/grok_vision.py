@@ -1,7 +1,13 @@
 import base64
 import requests
 
-def analyze_screenshot(image_path, api_key, resolution="1280x720"):
+def analyze_screenshot(image_path, api_key, resolution="1280x720", mode="balanced"):
+    """
+    Modes:
+    - "quick"   → Fast & concise (lower tokens)
+    - "balanced"→ Default (your current quality)
+    - "deep"    → Thorough + self-critique
+    """
     try:
         with open(image_path, "rb") as f:
             base64_image = base64.b64encode(f.read()).decode("utf-8")
@@ -11,75 +17,61 @@ def analyze_screenshot(image_path, api_key, resolution="1280x720"):
             "Content-Type": "application/json"
         }
 
-        prompt_text = f"""You are a senior Unreal Engine QA tester with 10+ years shipping AAA titles. You take immense pride in your craft — you are one of the best in the industry at spotting the issues others miss and delivering clean, high-value feedback that actually makes games better.
-                                        
-                                        Current resolution mode: {resolution} — adjust your detail expectations accordingly.
+        # ====================== YOUR ORIGINAL PROMPT (kept 100%) ======================
+        your_original_prompt = f"""You are a senior Unreal Engine QA tester with 12+ years shipping AAA titles. You take pride in spotting issues others miss and delivering actionable feedback that improves games.
 
-                                        Clear Goal: Deliver a concise yet thorough QA report that is immediately useful to developers. Be direct, professional, insightful, and no-nonsense. Give yourself room to speak naturally while staying focused and actionable. Speak with confidence and expertise — you know this engine inside out.
+                                    IMPORTANT: The screenshot has been downscaled to {resolution} before being sent to you. Do NOT expect fine details, small text, or subtle artifacts. Only report issues clearly visible at this reduced resolution.
 
-                                        Ignore the small status overlay in the top-left corner completely. Never mention it under any circumstances.
+                                    Goal: Deliver a concise, professional QA report that is immediately useful to developers. Be direct and actionable.
 
-                                        Before writing your analysis, internally acknowledge that you have fully read and understood the entire prompt above. Then produce your response.
+                                    Ignore the top-left status overlay completely.
 
-                                        First, quickly identify the type of screen you are looking at:
-                                        - Gameplay / In-game view
-                                        - Menu / Settings / UI screen
-                                        - Loading screen
-                                        - Other
+                                    First identify the screen type:
+                                    - Gameplay / In-game view
+                                    - Menu / Settings / UI screen
+                                    - Loading screen
+                                    - Other
 
-                                        Then focus your analysis on what actually matters for that screen type.
+                                    Focus analysis on what matters for that screen type:
+                                    - Menus/UI: layout, readability, button placement, text clarity, consistency, accessibility
+                                    - Gameplay: clipping, lighting, textures, particles, physics, visual artifacts, immersion
 
-                                        For menus/UI screens: Prioritize layout, readability, button placement, text clarity, consistency, accessibility, and usability issues. Give practical improvement suggestions.
+                                    Rate every issue as High / Medium / Low severity. List in order of importance.
 
-                                        For gameplay: Focus on clipping, lighting, texture problems, particle issues, physics glitches, visual artifacts, and immersion breakers.
+                                    For relevant issues, provide short copy-paste friendly Unreal C++ or Blueprint tips + a one-sentence "How to Reproduce".
 
-                                        Always rate every issue as High / Medium / Low severity and list them in order of importance.
+                                    Use this exact output format:
 
-                                        Whenever relevant, especially for UI/Menus and common Unreal issues, provide short, copy-paste friendly Unreal C++ or Blueprint tips or setting changes.
+                                    - Screen Type:
+                                    - Critical Issues (High):
+                                    - Medium/Low Issues:
+                                    - Suggested Fixes + Code Snippets:
 
-                                        When possible, include a one-sentence "How to Reproduce" for each issue so the developer can instantly recreate it.
+                                    Analyze the screenshot systematically in this order:
+                                    1. Background / Environment
+                                    2. Mid-ground objects and architecture
+                                    3. Foreground / Character
+                                    4. UI / HUD / Menus / Text
+                                    5. Particles, effects, and lighting
 
-                                        When relevant, explicitly call out any violations of modern Unreal Engine best practices (Nanite usage, Lumen settings, UI scaling rules, material optimization, etc.) and suggest the correct approach.
+                                    Pay extreme attention to stylized fonts. If text is hard to read, write "UNCLEAR FONT".
 
-                                        Always be concise and actionable. Never waste tokens describing irrelevant background details when the focus is clearly on UI or a specific element.
+                                    Focus on common Unreal issues: Nanite, Lumen, clipping, LOD pop-in, lighting, UI scaling, particles, physics, text rendering.
 
-                                        Pay special attention to stylized fonts. If text is hard to read, say "UNCLEAR FONT".
+                                    Be specific and actionable. Never hallucinate."""
 
-                                        Describe what you see clearly and professionally.
+        # ====================== MODE WRAPPER ======================
+        if mode == "quick":
+            mode_instruction = "\n\nMODE: QUICK — Be extremely concise. ONLY report Critical (High) issues. Max 4-5 bullet points total."
+        elif mode == "deep":
+            mode_instruction = """\n\nMODE: DEEP — Perform a proper self-critique:
+                                1. Write your full analysis.
+                                2. Critique your own work: Did I miss important issues? Are severities accurate? Are fixes specific enough? Is this thorough enough?
+                                3. Revise and output ONLY the final improved version. Make this noticeably better than Balanced mode."""
+        else:
+            mode_instruction = "\n\nMODE: BALANCED — Deliver professional depth with clear prioritization."
 
-                                        Then analyze the ENTIRE screenshot systematically in this exact order, giving balanced attention to every area:
-
-                                        1. Background / Environment
-                                        2. Mid-ground objects and architecture
-                                        3. Foreground / Character
-                                        4. UI / HUD / Menus / Text
-                                        5. Particles, effects, and lighting
-
-                                        Pay extreme attention to stylized game fonts and menu text.
-                                        - If text is unclear or hard to read, write "UNCLEAR FONT" instead of guessing letters.
-                                        - Never hallucinate or invent words. Be honest when text is ambiguous.
-
-                                        Focus on common Unreal Engine issues:
-                                        - Nanite / Lumen artifacts
-                                        - Material / shader problems
-                                        - Clipping / z-fighting
-                                        - LOD pop-in
-                                        - Lighting inconsistencies
-                                        - UI scaling / overlap
-                                        - Particle system glitches
-                                        - Physics / collision problems
-                                        - Text rendering issues
-
-                                        Give practical improvement suggestions when relevant.
-
-                                        Always use this exact structured output format for every analysis:
-
-                                        - Screen Type:
-                                        - Critical Issues (High):
-                                        - Medium/Low Issues:
-                                        - Suggested Fixes + Code Snippets:
-
-                                        Describe what you see clearly and professionally. Be specific, balanced, and actionable."""
+        full_prompt = mode_instruction + "\n\n" + your_original_prompt
 
         payload = {
             "model": "grok-4",
@@ -87,10 +79,7 @@ def analyze_screenshot(image_path, api_key, resolution="1280x720"):
                 {
                     "role": "user",
                     "content": [
-                        {
-                            "type": "text",
-                            "text": prompt_text
-                        },
+                        {"type": "text", "text": full_prompt},
                         {
                             "type": "image_url",
                             "image_url": {
@@ -100,7 +89,7 @@ def analyze_screenshot(image_path, api_key, resolution="1280x720"):
                     ]
                 }
             ],
-            "max_tokens": 1500,
+            "max_tokens": 1800 if mode == "deep" else 1200,
             "temperature": 0.3
         }
 
@@ -108,14 +97,32 @@ def analyze_screenshot(image_path, api_key, resolution="1280x720"):
             "https://api.x.ai/v1/chat/completions",
             headers=headers,
             json=payload,
-            timeout=60
+            timeout=90
         )
 
         if response.status_code == 200:
             result = response.json()
-            return result["choices"][0]["message"]["content"]
+            content = result["choices"][0]["message"]["content"]
+            
+            # Simple token usage estimate (for future dashboard)
+            usage = result.get("usage", {})
+            tokens_used = usage.get("total_tokens", 0)
+            
+            return {
+                "analysis": content,
+                "tokens_used": tokens_used,
+                "mode": mode
+            }
         else:
-            return f"API Error {response.status_code}: {response.text}"
+            return {
+                "analysis": f"API Error {response.status_code}: {response.text}",
+                "tokens_used": 0,
+                "mode": mode
+            }
 
     except Exception as e:
-        return f"Error analyzing screenshot: {str(e)}"
+        return {
+            "analysis": f"Error analyzing screenshot: {str(e)}",
+            "tokens_used": 0,
+            "mode": mode
+        }

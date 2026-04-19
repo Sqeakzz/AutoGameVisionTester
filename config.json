@@ -1,8 +1,8 @@
 {
-  "grok_api_key": "Your_Key_Here",
+  "grok_api_key": "placeholder",
   "screenshot_interval": 2,
   "game_window_title": "Unreal",
   "output_folder": "reports",
-  "max_resolution": "960x540",
+  "max_resolution": "1280x720",
   "max_screenshots": 300
 }

@@ -4,7 +4,6 @@ import json
 from queue import Queue
 import threading
 import tkinter as tk
-from tkinter import ttk
 from pynput import keyboard
 import shutil
 from PIL import Image
@@ -17,48 +16,85 @@ def load_config():
     with open("config.json", "r") as f:
         return json.load(f)
 
+
 class StatusWindow:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("VisionTester")
-        self.root.geometry("280x88+0+0")
+        self.root.geometry("260x95+0+0")
         self.root.attributes("-topmost", True)
         self.root.resizable(False, False)
         self.root.overrideredirect(True)
+        self.root.configure(bg="#0D0D0D")
+
+        # Main mint green frame with purple glow
+        self.main_frame = tk.Frame(
+            self.root,
+            bg="#98FF98",
+            bd=3,
+            relief="solid",
+            highlightbackground="#9D4EDD",
+            highlightthickness=4
+        )
+        self.main_frame.pack(padx=4, pady=4, fill="both", expand=True)
+
+        # Two-column layout
+        top_frame = tk.Frame(self.main_frame, bg="#98FF98")
+        top_frame.pack(padx=10, pady=10, fill="x")
+
+        # Left - Queue
+        left_frame = tk.Frame(top_frame, bg="#98FF98")
+        left_frame.pack(side="left", expand=True)
         
-        frame = ttk.Frame(self.root)
-        frame.pack(padx=8, pady=6, fill="x")
+        self.queue_label = tk.Label(
+            left_frame, 
+            text="📈 0", 
+            font=("Segoe UI", 16, "bold"),
+            bg="#98FF98",
+            fg="#1A1A2E"
+        )
+        self.queue_label.pack()
         
-        self.queue_label = ttk.Label(frame, text="Queued: 0", font=("Consolas", 11))
-        self.queue_label.pack(side="left")
+        tk.Label(left_frame, text="Queued", font=("Segoe UI", 8), bg="#98FF98", fg="#1A1A2E").pack()
+
+        # Right - Runtime
+        right_frame = tk.Frame(top_frame, bg="#98FF98")
+        right_frame.pack(side="right", expand=True)
         
-        self.time_label = ttk.Label(frame, text="00:00", font=("Consolas", 11))
-        self.time_label.pack(side="right")
+        self.time_label = tk.Label(
+            right_frame, 
+            text="🕐 00:00", 
+            font=("Segoe UI", 16, "bold"),
+            bg="#98FF98",
+            fg="#1A1A2E"
+        )
+        self.time_label.pack()
         
-        self.status_label = ttk.Label(self.root, text="Running • Ctrl+Alt+S to analyze", foreground="lime", font=("Consolas", 9))
-        self.status_label.pack(pady=4)
-        
+        tk.Label(right_frame, text="Runtime", font=("Segoe UI", 8), bg="#98FF98", fg="#1A1A2E").pack()
+
         self.start_time = time.time()
+        self.timer_id = None
         self.update_timer()
-    
+
     def update_timer(self):
         elapsed = int(time.time() - self.start_time)
         mins = elapsed // 60
         secs = elapsed % 60
-        self.time_label.config(text=f"{mins:02d}:{secs:02d}")
-        self.root.after(1000, self.update_timer)
-    
+        self.time_label.config(text=f"🕐 {mins:02d}:{secs:02d}")
+        self.timer_id = self.root.after(1000, self.update_timer)
+
+    def cancel_timer(self):
+        if self.timer_id:
+            self.root.after_cancel(self.timer_id)
+            self.timer_id = None
+
     def update_queue(self, count):
-        self.queue_label.config(text=f"Queued: {count}")
-    
-    def set_analyzing(self):
-        self.status_label.config(text="Analyzing... Please wait", foreground="orange")
-    
-    def set_complete(self):
-        self.status_label.config(text="✅ Analysis complete", foreground="lime")
-    
+        self.queue_label.config(text=f"📈 {count}")
+
     def close(self):
-        self.root.quit()
+        self.cancel_timer()
+        self.root.destroy()
+
 
 def clear_data():
     try:
@@ -70,16 +106,18 @@ def clear_data():
     except Exception as e:
         print(f"❌ Clear error: {e}")
 
+
 def run_preview_mode(config):
     print(f"\n📸 Preview Mode — every {config['screenshot_interval']} seconds")
     print(f"   Resolution: {config.get('max_resolution', '1280x720')}")
     print("   Press Ctrl + Alt + S to trigger batch analysis.\n")
     
-    # Make sure screenshots folder exists
     Path("screenshots").mkdir(exist_ok=True)
     
     screenshot_queue = Queue()
     stop_event = threading.Event()
+    hotkey_pressed = threading.Event()
+    
     status_win = StatusWindow()
     last_hash = None
     hash_threshold = 18
@@ -88,15 +126,13 @@ def run_preview_mode(config):
         nonlocal last_hash
         while not stop_event.is_set():
             try:
-                # Always save to screenshots/ folder
                 screenshot_path = capture_game_window(
                     config["game_window_title"], 
-                    "screenshots"   # ← Fixed: always save here
+                    "screenshots"
                 )
                 if screenshot_path:
                     img = Image.open(screenshot_path)
 
-                    # === Resolution Scaling ===
                     res = config.get("max_resolution", "1280x720")
                     try:
                         max_width, max_height = map(int, res.split("x"))
@@ -108,7 +144,6 @@ def run_preview_mode(config):
                     img = img.resize(new_size, Image.LANCZOS)
                     img.save(screenshot_path, "PNG")
 
-                    # Smart Capture (hash check)
                     current_hash = imagehash.average_hash(img)
                     if last_hash is None or (current_hash - last_hash) > hash_threshold:
                         screenshot_queue.put(screenshot_path)
@@ -129,34 +164,42 @@ def run_preview_mode(config):
 
     def on_hotkey():
         if not stop_event.is_set():
-            print("\n⏹️ Hotkey pressed - Starting batch analysis...")
-            status_win.root.after(0, status_win.set_analyzing)
+            print("\n⏹️ Hotkey pressed - Stopping capture...")
             stop_event.set()
-            status_win.root.after(100, lambda: perform_batch_analysis(status_win, screenshot_queue))
+            hotkey_pressed.set()
 
-    def perform_batch_analysis(status_win, screenshot_queue):
+    def check_for_hotkey():
+        if hotkey_pressed.is_set():
+            status_win.close()
+            handle_mode_selection()
+            return
+        status_win.root.after(100, check_for_hotkey)
+
+    def handle_mode_selection():
+        mode_input = input("Choose mode (quick / balanced / deep) [default: balanced]: ").strip().lower()
+        mode = mode_input if mode_input in ["quick", "balanced", "deep"] else "balanced"
+        
         screenshots = []
         while not screenshot_queue.empty():
             screenshots.append(screenshot_queue.get())
 
         if screenshots:
-            print(f"📊 Analyzing {len(screenshots)} screenshots in batch...")
-            generate_report(screenshots, "reports")
-            print(f"✅ Batch report complete with {len(screenshots)} screenshots")
-            status_win.root.after(0, status_win.set_complete)
-            status_win.root.after(2000, status_win.close)
+            print(f"\n📊 Analyzing {len(screenshots)} screenshots in **{mode.upper()}** mode...")
+            generate_report(screenshots, "reports", mode=mode, config=config)
+            print(f"✅ Batch report complete ({mode} mode)")
         else:
             print("No new screenshots were captured.")
-            status_win.root.after(0, status_win.close)
 
     hotkey_listener = keyboard.GlobalHotKeys({'<ctrl>+<alt>+s': on_hotkey})
     hotkey_listener.start()
 
+    check_for_hotkey()
     status_win.root.mainloop()
 
     stop_event.set()
     hotkey_listener.stop()
     capture_thread.join(timeout=3)
+
 
 def main_menu():
     global config
@@ -179,6 +222,7 @@ def main_menu():
             print("Goodbye!")
             break
 
+
 def edit_config():
     global config
     config = load_config()
@@ -196,7 +240,6 @@ def edit_config():
             break
 
         if choice == "5":
-            # === Max Resolution Preset Menu ===
             print("\n=== Max Resolution ===")
             print("1. Budget     (960x540)")
             print("2. Balanced   (1280x720)")
@@ -232,9 +275,9 @@ def edit_config():
             except:
                 print("Invalid input.")
 
-        # Save after every change
         with open("config.json", "w") as f:
             json.dump(config, f, indent=2)
+
 
 if __name__ == "__main__":
     config = load_config()
