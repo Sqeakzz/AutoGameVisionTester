@@ -14,9 +14,10 @@ Built for game developers who want fast, intelligent testing — especially usef
 - **Configurable Resolution** — Budget (960x540), Balanced (1280x720), or Full (1920x1080)
 
 ## 📸 Screenshots
-Example HTML Report:
 
-## 🚀 Installation
+**Example HTML Report:**
+
+![HTML Report Example](assets/Example_Report.png)
 
 Clone the repository:
 ```bash
