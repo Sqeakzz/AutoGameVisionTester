@@ -1,7 +1,7 @@
 {
   "grok_api_key": "Placeholder",
   "screenshot_interval": 2,
-  "game_window_title": "Unreal",
+  "game_window_title": "Trees Hate You",
   "output_folder": "reports",
   "max_resolution": "1280x720",
   "max_screenshots": 300
