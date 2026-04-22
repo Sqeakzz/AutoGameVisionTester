@@ -1,5 +1,5 @@
 {
-  "grok_api_key": "xai-4D2E2dxY1vQXAB3rAZ4EbV3yti13kvSIC4jPuxhL264VOAsN73mv4j742h8TrKRTngj1WFaqp259aYuw",
+  "grok_api_key": "APIKeyHere",
   "screenshot_interval": 2,
   "game_window_title": "Unreal Physics  ",
   "output_folder": "reports",
