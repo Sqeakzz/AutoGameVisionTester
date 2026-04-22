@@ -3,7 +3,8 @@ from datetime import datetime
 import json
 from utils.grok_vision import analyze_screenshot
 
-def generate_report(screenshots, output_folder, mode="balanced", config=None):
+def generate_report(screenshots, output_folder, mode="balanced", config=None, progress_callback=None):
+    
     if config is None:
         with open("config.json", "r") as f:
             config = json.load(f)
@@ -49,6 +50,10 @@ def generate_report(screenshots, output_folder, mode="balanced", config=None):
     for i, screenshot in enumerate(screenshots, 1):
         print(f"Analyzing screenshot {i}/{len(screenshots)} ({mode})...")
         
+        # Report progress if callback is provided
+        if progress_callback:
+            progress_callback(i, len(screenshots))
+
         result = analyze_screenshot(
             screenshot, 
             config["grok_api_key"], 

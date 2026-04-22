@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoGameVisionTester • Dashboard</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #0a0a14;
+            color: #e0e0e0;
+            padding: 20px;
+            max-width: 1600px;
+            margin: auto;
+        }
+        h1 {
+            color: #98FF98;
+            text-align: center;
+            margin-bottom: 5px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 20px;
+        }
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .config-bar {
+            background: #1a1a2e;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .stat-card {
+            background: #1a1a2e;
+            padding: 18px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 26px;
+            font-weight: bold;
+            color: #98FF98;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #1a1a2e;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        th {
+            background: #16213e;
+            color: #98FF98;
+            padding: 14px;
+            text-align: left;
+        }
+        td {
+            padding: 14px;
+            border-bottom: 1px solid #333;
+        }
+        /* Alternating row colors */
+        tbody tr:nth-child(even) {
+            background: #16162a;
+        }
+
+        tbody tr:nth-child(odd) {
+            background: #1a1a2e;
+        }
+        /* Better hover effect */
+        tbody tr:hover {
+            background: #2a2a4e;
+            transition: background 0.2s ease;
+        }
+        .high { color: #ff6b6b; font-weight: bold; }
+        .medium { color: #ffd93d; }
+        .low { color: #6bcb77; }
+        /* Subtle shadows for cards */
+        .stat-card {
+            background: #1a1a2e;
+            padding: 18px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transition: transform 0.2s ease;
+            border-left: 4px solid #98FF98; /* Default border */
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+        }
+
+        /* Subtle shadows for buttons */
+        .btn {
+            background: #4ecdc4;
+            color: #0a0a14;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 3px 8px rgba(78, 205, 196, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            background: #3bb8b0;
+            box-shadow: 0 4px 12px rgba(78, 205, 196, 0.4);
+            transform: translateY(-1px);
+        }
+
+        /* Stop button shadow */
+        .btn-stop {
+            background: #ff6b6b;
+            color: white;
+            box-shadow: 0 3px 8px rgba(255, 107, 107, 0.3);
+        }
+
+        .btn-stop:hover {
+            background: #e55a5a;
+            box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+        }
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #1a1a2e;
+            color: #e0e0e0;
+            padding: 16px 24px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 1001;
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+        
+        .toast.show {
+            display: block;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+        }
+        .modal-content {
+            background-color: #1a1a2e;
+            margin: 10% auto;
+            padding: 25px;
+            border-radius: 10px;
+            width: 400px;
+            text-align: center;
+        }
+        .mode-btn {
+            display: block;
+            width: 100%;
+            margin: 10px 0;
+            padding: 12px;
+            font-size: 16px;
+        }
+        .settings-menu-item {
+            padding: 14px 25px;
+            cursor: pointer;
+            color: #aaa;
+            transition: all 0.2s ease;
+        }
+
+        .settings-menu-item:hover {
+            background: #1f2a4a;
+            color: #fff;
+        }
+
+        .settings-menu-item.active {
+            background: #4ecdc4;
+            color: #0a0a14;
+            font-weight: bold;
+        }
+
+        .settings-section {
+            display: none;
+        }
+
+        .settings-section.active {
+            display: block;
+        }
+        /* === Settings Modal Buttons === */
+        .modal-content .btn {
+            background: #4ecdc4;
+            color: #0a0a14;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 3px 8px rgba(78, 205, 196, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .modal-content .btn:hover {
+            background: #3bb8b0;
+            box-shadow: 0 4px 12px rgba(78, 205, 196, 0.4);
+            transform: translateY(-1px);
+        }
+
+        /* Purple Settings button */
+        .modal-content .btn.settings-btn {
+            background: #6c5ce7 !important;
+            color: white !important;
+            box-shadow: 0 3px 8px rgba(108, 92, 231, 0.3) !important;
+        }
+
+        .modal-content .btn.settings-btn:hover {
+            background: #5a4bc4 !important;
+            box-shadow: 0 4px 12px rgba(108, 92, 231, 0.4) !important;
+        }
+
+        /* Red danger buttons (Clear Data, etc.) */
+        .modal-content .btn-danger {
+            background: #ff6b6b !important;
+            color: white !important;
+            box-shadow: 0 3px 8px rgba(255, 107, 107, 0.3) !important;
+        }
+
+        .modal-content .btn-danger:hover {
+            background: #e55a5a !important;
+            box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4) !important;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <h1>🎮 AutoGameVisionTester</h1>
+        
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <!-- Capture Area -->
+            <div style="display: flex; align-items: center; gap: 12px;">
+                
+                <!-- Start Capture Button -->
+                <button class="btn" id="startBtn" onclick="startCapture()">
+                    🚀 Start Capture
+                </button>
+                
+                <!-- Focus Warning + Proceed / Cancel -->
+                <div id="focus-warning" style="display: none; background: #1a1a2e; padding: 12px 16px; border-radius: 8px; max-width: 320px;">
+                    <div style="margin-bottom: 8px; color: #ffd93d; font-size: 14px;">
+                        📌 Please click on your <strong>game window</strong> to focus it, then click Proceed.
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn" onclick="proceedWithCapture()" style="flex: 1; background: #4ecdc4; color: #0a0a14;">
+                            ✅ Proceed
+                        </button>
+                        <button class="btn" onclick="cancelCapture()" style="flex: 1; background: #666; color: white;">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Live Status + Stop Button -->
+                <div id="live-status" style="display: none; background: #1a1a2e; padding: 10px 16px; border-radius: 8px; min-width: 240px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <div>
+                            <span style="font-size: 13px; color: #888;">📈 Queue</span><br>
+                            <span id="queue-count" style="font-size: 20px; font-weight: bold; color: #98FF98;">0</span>
+                        </div>
+                        <div style="text-align: right;">
+                            <span style="font-size: 13px; color: #888;">🕐 Runtime</span><br>
+                            <span id="runtime" style="font-size: 20px; font-weight: bold; color: #98FF98;">00:00</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-stop" onclick="stopCapture()" style="width: 100%; padding: 8px;">
+                        ⏹ Stop Capture
+                    </button>
+                </div>
+
+                <!-- Analysis Mode Selection (appears after stopping capture) -->
+                <div id="analysis-selection" style="display: none; background: #1a1a2e; padding: 15px; border-radius: 8px; margin-top: 10px;">
+                    <div style="margin-bottom: 10px; color: #98FF98; font-weight: bold;">
+                        ✅ Capture stopped! Choose analysis mode:
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn" onclick="chooseAnalysisMode('quick')" style="flex: 1;">Quick</button>
+                        <button class="btn" onclick="chooseAnalysisMode('balanced')" style="flex: 1;">Balanced</button>
+                        <button class="btn" onclick="chooseAnalysisMode('deep')" style="flex: 1;">Deep</button>
+                    </div>
+                </div>
+
+                <!-- Analyzing Spinner -->
+                <div id="analyzing-progress" style="display: none; background: #1a1a2e; padding: 25px; border-radius: 10px; margin-top: 10px; text-align: center;">
+                    <div style="margin-bottom: 15px;">
+                        <div class="spinner" style="
+                            width: 40px; 
+                            height: 40px; 
+                            border: 4px solid #333; 
+                            border-top: 4px solid #4ecdc4; 
+                            border-radius: 50%; 
+                            animation: spin 1s linear infinite;
+                            margin: 0 auto 12px;
+                        "></div>
+                        <div style="font-weight: bold; color: #98FF98;">Analyzing screenshots...</div>
+                        <div style="color: #888; font-size: 13px; margin-top: 5px;">This may take a moment</div>
+                    </div>
+                </div>
+
+                <style>
+                    @keyframes spin {
+                        0% { transform: rotate(0deg); }
+                        100% { transform: rotate(360deg); }
+                    }
+                </style>           
+            </div>
+            </div>  
+        </div>
+    </div>
+
+    <p class="subtitle">Interactive History Dashboard</p>
+
+    <div id="toast" class="toast"></div>
+
+    <div class="config-bar" style="display: flex; align-items: center; justify-content: space-between;">
+    
+    <!-- Settings Button (Left Side) -->
+        <button class="btn" onclick="showSettingsModal()" 
+                style="background: #6c5ce7; color: white; white-space: nowrap; margin-right: 20px;">
+            ⚙️ Settings
+        </button>
+
+        <!-- Config Info (Right Side) -->
+        <div style="display: flex; gap: 30px; flex-wrap: wrap;">
+            <div><strong>Game Window:</strong> <span id="config-window">Loading...</span></div>
+            <div><strong>Resolution:</strong> <span id="config-resolution">Loading...</span></div>
+            <div><strong>Interval:</strong> <span id="config-interval">Loading...</span>s</div>
+        </div>
+        
+    </div>
+
+    <!-- Stats -->
+    <div class="stats">
+        <div class="stat-card" style="border-left: 4px solid #98FF98;">
+            <div style="font-size: 20px; margin-bottom: 5px;">📊</div>
+            <div>Total Reports</div>
+            <div class="stat-value" id="total-reports">0</div>
+        </div>
+        
+        <div class="stat-card" style="border-left: 4px solid #ff6b6b;">
+            <div style="font-size: 20px; margin-bottom: 5px;">🔴</div>
+            <div>High Issues</div>
+            <div class="stat-value high" id="total-high">0</div>
+        </div>
+        
+        <div class="stat-card" style="border-left: 4px solid #ffd93d;">
+            <div style="font-size: 20px; margin-bottom: 5px;">🟡</div>
+            <div>Medium Issues</div>
+            <div class="stat-value medium" id="total-medium">0</div>
+        </div>
+        
+        <div class="stat-card" style="border-left: 4px solid #6bcb77;">
+            <div style="font-size: 20px; margin-bottom: 5px;">🟢</div>
+            <div>Low Issues</div>
+            <div class="stat-value low" id="total-low">0</div>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Date & Time</th>
+                <th>Mode</th>
+                <th>High</th>
+                <th>Medium</th>
+                <th>Low</th>
+                <th>Tokens</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="history-body">
+        </tbody>
+    </table>
+
+    <!-- Analysis Modal -->
+    <div id="analysisModal" class="modal">
+        <div class="modal-content">
+            <h3>Choose Analysis Mode</h3>
+            <button class="btn mode-btn" onclick="startAnalysis('quick')">Quick Mode</button>
+            <button class="btn mode-btn" onclick="startAnalysis('balanced')">Balanced Mode</button>
+            <button class="btn mode-btn" onclick="startAnalysis('deep')">Deep Mode</button>
+            <br><br>
+            <button onclick="closeModal()" style="background:#666; color:white; padding:8px 16px; border:none; border-radius:6px;">Cancel</button>
+        </div>
+    </div>
+
+    <script>
+        let historyData = [];
+        let configData = {};
+        let runtimeInterval = null;
+        let startTime = null;
+        let queuePollInterval = null;
+
+        // ==================== CORE FUNCTIONS ====================
+
+        async function loadConfig() {
+            try {
+                const response = await fetch('config.json');
+                configData = await response.json();
+                document.getElementById('config-window').textContent = configData.game_window_title || "N/A";
+                document.getElementById('config-resolution').textContent = configData.max_resolution || "N/A";
+                document.getElementById('config-interval').textContent = configData.screenshot_interval || "N/A";
+            } catch (error) {
+                console.log("Could not load config");
+            }
+        }
+
+        async function loadHistory() {
+            try {
+                const response = await fetch('history.json?t=' + Date.now());
+                historyData = await response.json();
+                renderTable(historyData);
+                updateStats();
+            } catch (error) {
+                document.getElementById('history-body').innerHTML = 
+                    '<tr><td colspan="7" style="color:#ff6b6b">Failed to load history.json</td></tr>';
+            }
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('history-body');
+            tbody.innerHTML = '';
+
+            data.forEach(entry => {
+                const row = document.createElement('tr');
+                const escapedPath = entry.report_file.replace(/\\/g, '\\\\');
+                
+                row.innerHTML = `
+                    <td>${entry.date}</td>
+                    <td>${entry.mode}</td>
+                    <td class="high">${entry.high_issues}</td>
+                    <td class="medium">${entry.medium_issues}</td>
+                    <td class="low">${entry.low_issues}</td>
+                    <td>${entry.tokens_used}</td>
+                    <td>
+                        <button class="btn" onclick="openReport('${escapedPath}')">Open Report</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function updateStats() {
+            let totalHigh = 0, totalMedium = 0, totalLow = 0;
+            historyData.forEach(entry => {
+                totalHigh += entry.high_issues;
+                totalMedium += entry.medium_issues;
+                totalLow += entry.low_issues;
+            });
+            document.getElementById('total-reports').textContent = historyData.length;
+            document.getElementById('total-high').textContent = totalHigh;
+            document.getElementById('total-medium').textContent = totalMedium;
+            document.getElementById('total-low').textContent = totalLow;
+        }
+
+        function openReport(path) {
+            let cleanPath = path.replace(/\\/g, '/');
+            cleanPath = cleanPath.replace(/^reports\//i, '');
+            cleanPath = 'reports/' + cleanPath;
+            window.open(cleanPath, '_blank');
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.innerHTML = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // ==================== CAPTURE FLOW ====================
+
+        // ==================== CAPTURE FLOW ====================
+
+        async function startCapture() {
+            // Just show the warning - do NOT start capture yet
+            document.getElementById('startBtn').style.display = 'none';
+            document.getElementById('focus-warning').style.display = 'block';
+            showToast("📌 Please focus your game window, then click Proceed.");
+        }
+
+        function proceedWithCapture() {
+            // Hide warning
+            document.getElementById('focus-warning').style.display = 'none';
+            
+            // NOW start the actual capture
+            fetch('/start-capture', { method: 'POST' })
+                .then(() => {
+                    document.getElementById('live-status').style.display = 'block';
+                    
+                    // Start runtime timer
+                    startTime = Date.now();
+                    updateRuntime();
+                    runtimeInterval = setInterval(updateRuntime, 1000);
+                    startQueuePolling();
+
+                    showToast("✅ Capture is now running!");
+                })
+                .catch(err => {
+                    showToast("Error starting capture: " + err.message);
+                    // Show start button again if something fails
+                    document.getElementById('startBtn').style.display = 'inline-block';
+                });
+        }
+
+        function cancelCapture() {
+            document.getElementById('focus-warning').style.display = 'none';
+            document.getElementById('startBtn').style.display = 'inline-block';
+            showToast("Capture cancelled.");
+        }
+
+        async function stopCapture() {
+            try {
+                const response = await fetch('/stop-capture', { method: 'POST' });
+                
+                if (response.ok) {
+                    clearInterval(runtimeInterval);
+                    stopQueuePolling();
+                    
+                    // Hide live status
+                    const liveStatus = document.getElementById('live-status');
+                    if (liveStatus) liveStatus.style.display = 'none';
+                    
+                    // Show analysis mode selection
+                    const analysisSel = document.getElementById('analysis-selection');
+                    if (analysisSel) analysisSel.style.display = 'block';
+                    
+                    showToast("⏹ Capture stopped. Choose analysis mode.");
+                }
+            } catch (error) {
+                showToast("Error stopping capture: " + error.message);
+            }
+        }
+
+        function updateRuntime() {
+            if (!startTime) return;
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const mins = Math.floor(elapsed / 60);
+            const secs = elapsed % 60;
+            document.getElementById('runtime').textContent = 
+                `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function startQueuePolling() {
+            if (queuePollInterval) clearInterval(queuePollInterval);
+            
+            queuePollInterval = setInterval(async () => {
+                try {
+                    const response = await fetch('/get-queue-count');
+                    const data = await response.json();
+                    document.getElementById('queue-count').textContent = data.queue_size || 0;
+                } catch (e) {}
+            }, 1500);
+        }
+
+        function stopQueuePolling() {
+            if (queuePollInterval) {
+                clearInterval(queuePollInterval);
+                queuePollInterval = null;
+            }
+        }
+
+        // ==================== SETTINGS ====================
+
+        function showSettingsModal() {
+            document.getElementById('model-select').value = configData.model || "grok-4";
+            document.getElementById('api-key').value = "";
+            document.getElementById('window-title').value = configData.game_window_title || "";
+            document.getElementById('interval').value = configData.screenshot_interval || 2;
+            document.getElementById('max-screenshots').value = configData.max_screenshots || 300;
+            showSettingsSection('api');
+            document.getElementById('settingsModal').style.display = 'block';
+        }
+
+        function showSettingsSection(section) {
+            document.querySelectorAll('.settings-section').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.settings-menu-item').forEach(el => el.classList.remove('active'));
+            document.getElementById('section-' + section).style.display = 'block';
+            document.getElementById('menu-' + section).classList.add('active');
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('settingsModal').style.display = 'none';
+        }
+
+        async function saveAllSettings() {
+            const newConfig = {
+                ...configData,
+                model: document.getElementById('model-select').value,
+                game_window_title: document.getElementById('window-title').value,
+                max_resolution: document.getElementById('resolution-select').value,
+                screenshot_interval: parseInt(document.getElementById('interval').value),
+                max_screenshots: parseInt(document.getElementById('max-screenshots').value)
+            };
+            
+            const newApiKey = document.getElementById('api-key').value;
+            if (newApiKey.trim() !== "") newConfig.grok_api_key = newApiKey.trim();
+            
+            try {
+                const response = await fetch('/save-config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newConfig)
+                });
+                
+                if (response.ok) {
+                    configData = newConfig;
+                    updateConfigBar();
+                    alert("✅ Settings saved successfully!");
+                    closeSettingsModal();
+                } else {
+                    alert("Failed to save settings");
+                }
+            } catch (error) {
+                alert("Error saving settings: " + error.message);
+            }
+        }
+
+        function updateConfigBar() {
+            document.getElementById('config-window').textContent = configData.game_window_title || "N/A";
+            document.getElementById('config-resolution').textContent = configData.max_resolution || "N/A";
+            document.getElementById('config-interval').textContent = configData.screenshot_interval || "N/A";
+        }
+
+        async function detectWindows() {
+            try {
+                const response = await fetch('/detect-windows');
+                const windows = await response.json();
+                
+                if (windows.length === 0) {
+                    showToast("No windows with titles found.");
+                    return;
+                }
+                
+                const dropdown = document.getElementById('detected-windows');
+                dropdown.innerHTML = '<option value="">-- Select a detected window --</option>';
+                
+                windows.forEach(title => {
+                    const option = document.createElement('option');
+                    option.value = title;
+                    option.textContent = title;
+                    dropdown.appendChild(option);
+                });
+                
+                showToast(`✅ Found ${windows.length} windows!`);
+            } catch (error) {
+                showToast("Error detecting windows: " + error.message);
+            }
+        }
+
+        function selectDetectedWindow() {
+            const value = document.getElementById('detected-windows').value;
+            if (value) {
+                document.getElementById('window-title').value = value;
+                showToast("✅ Window selected: " + value);
+            }
+        }
+
+        async function chooseAnalysisMode(mode) {
+            try {
+                // Hide mode selection
+                document.getElementById('analysis-selection').style.display = 'none';
+                
+                // Show loading spinner
+                document.getElementById('analyzing-progress').style.display = 'block';
+                
+                // Run analysis
+                const response = await fetch('/run-analysis', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode: mode })
+                });
+                
+                // Hide spinner
+                document.getElementById('analyzing-progress').style.display = 'none';
+                document.getElementById('startBtn').style.display = 'inline-block';
+                
+                if (response.ok) {
+                    showToast(`✅ Analysis complete in ${mode} mode!`);
+                    loadHistory();
+                } else {
+                    showToast("Analysis finished (check terminal for results)");
+                }
+                
+            } catch (error) {
+                document.getElementById('analyzing-progress').style.display = 'none';
+                document.getElementById('startBtn').style.display = 'inline-block';
+                showToast("Error: " + error.message);
+            }
+        }
+        async function clearAllData() {
+            if (!confirm("⚠️ This will delete ALL screenshots, reports, and history. Are you sure?")) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/clear-data', { method: 'POST' });
+                
+                if (response.ok) {
+                    showToast("✅ All data cleared successfully!");
+                    closeSettingsModal();
+                    
+                    // Refresh everything
+                    setTimeout(() => {
+                        loadHistory();
+                        document.getElementById('total-reports').textContent = '0';
+                        document.getElementById('total-high').textContent = '0';
+                        document.getElementById('total-medium').textContent = '0';
+                        document.getElementById('total-low').textContent = '0';
+                    }, 500);
+                } else {
+                    showToast("Failed to clear data");
+                }
+            } catch (error) {
+                showToast("Error: " + error.message);
+            }
+        }
+
+        // ==================== INIT ====================
+
+        window.onload = function() {
+            loadConfig();
+            loadHistory();
+        };
+    </script>
+         <div id="settingsModal" class="modal">
+            <div class="modal-content" style="width: 750px; max-height: 80vh; display: flex; flex-direction: column; padding: 0;">
+                
+                <!-- Header -->
+                <div style="padding: 20px 25px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="margin: 0;">Settings</h3>
+                    <button onclick="closeSettingsModal()" style="background: none; border: none; color: #888; font-size: 24px; cursor: pointer;">×</button>
+                </div>
+                
+                <div style="display: flex; flex: 1; overflow: hidden;">
+                    
+                    <!-- Left Sidebar -->
+                    <div style="width: 200px; background: #16213e; padding: 20px 0; border-right: 1px solid #333;">
+                        <div onclick="showSettingsSection('api')" class="settings-menu-item active" id="menu-api">API</div>
+                        <div onclick="showSettingsSection('window')" class="settings-menu-item" id="menu-window">Window</div>
+                        <div onclick="showSettingsSection('screenshot')" class="settings-menu-item" id="menu-screenshot">Screenshot</div>
+                        <div onclick="showSettingsSection('clear')" class="settings-menu-item" id="menu-clear">Clear Data</div>
+                    </div>
+                    
+                    <!-- Right Content Area -->
+                    <div style="flex: 1; padding: 25px; overflow-y: auto;">
+                        
+                        <!-- API Section -->
+                        <div id="section-api" class="settings-section">
+                            <h4>API Settings</h4>
+                            <div style="margin: 15px 0;">
+                                <label style="display: block; margin-bottom: 8px;">Grok Model</label>
+                                <select id="model-select" style="width: 100%; padding: 10px; border-radius: 6px; background: #0a0a14; color: #e0e0e0; border: 1px solid #444;">
+                                    <option value="grok-4">Grok-4 (Recommended)</option>
+                                    <option value="grok-4.1">Grok-4.1 (Faster)</option>
+                                    <option value="grok-4.2">Grok-4.2 (Better Vision)</option>
+                                    <option value="grok-4.3">Grok-4.3 (Latest)</option>
+                                </select>
+                            </div>
+                            <div style="margin: 15px 0;">
+                                <label style="display: block; margin-bottom: 8px;">API Key</label>
+                                <input type="password" id="api-key" placeholder="Enter new API key" 
+                                    style="width: 100%; padding: 10px; border-radius: 6px; background: #0a0a14; color: #e0e0e0; border: 1px solid #444;">
+                            </div>
+                        </div>
+                        
+                        <!-- Window Section -->
+                        <div id="section-window" class="settings-section" style="display: none;">
+                            <h4>Window Settings</h4>
+                            
+                            <div style="margin: 20px 0;">
+                                <label style="display: block; margin-bottom: 8px;">Game Window Title</label>
+                                
+                                <input type="text" id="window-title" placeholder="Unreal, Unity, Godot..." 
+                                    style="width: 100%; padding: 10px; border-radius: 6px; background: #0a0a14; color: #e0e0e0; border: 1px solid #444; margin-bottom: 12px;">
+                                
+                                <button onclick="detectWindows()" class="btn">
+                                    🔍 Detect Running Windows
+                                </button>
+                                
+                                <div style="margin-top: 12px;">
+                                    <label style="display: block; margin-bottom: 6px; font-size: 13px; color: #888;">Detected Windows</label>
+                                    <select id="detected-windows" onchange="selectDetectedWindow()"
+                                            style="width: 100%; padding: 10px; border-radius: 6px; background: #0a0a14; color: #e0e0e0; border: 1px solid #444;">
+                                        <option value="">-- Select a detected window --</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Screenshot Section -->
+                        <div id="section-screenshot" class="settings-section" style="display: none;">
+                            <h4>Screenshot Settings</h4>
+                            
+                            <div style="margin: 15px 0;">
+                                <label style="display: block; margin-bottom: 8px;">Resolution</label>
+                                <select id="resolution-select" style="width: 100%; padding: 10px; border-radius: 6px; background: #0a0a14; color: #e0e0e0; border: 1px solid #444;">
+                                    <option value="960x540">Budget (960x540)</option>
+                                    <option value="1280x720">Balanced (1280x720)</option>
+                                    <option value="1920x1080">Full Res (1920x1080)</option>
+                                </select>
+                            </div>
+                            
+                            <div style="margin: 15px 0;">
+                                <label style="display: block; margin-bottom: 8px;">Screenshot Interval (seconds)</label>
+                                <input type="number" id="interval" value="2" min="1" max="10"
+                                    style="width: 100%; padding: 10px; border-radius: 6px; background: #0a0a14; color: #e0e0e0; border: 1px solid #444;">
+                            </div>
+                            
+                            <div style="margin: 15px 0;">
+                                <label style="display: block; margin-bottom: 8px;">Max Screenshots</label>
+                                <input type="number" id="max-screenshots" value="300" min="10" max="1000"
+                                    style="width: 100%; padding: 10px; border-radius: 6px; background: #0a0a14; color: #e0e0e0; border: 1px solid #444;">
+                            </div>
+                        </div>
+                        
+                        <!-- Clear Data Section -->
+                        <div id="section-clear" class="settings-section" style="display: none;">
+                            <h4>Clear Data</h4>
+                            <p style="color: #ff6b6b; margin: 15px 0;">Warning: This will permanently delete all reports and history.</p>
+                            <button onclick="clearAllData()" class="btn btn-danger">
+                                🗑️ Clear All Data
+                            </button>
+                        </div>
+                        
+                    </div>
+                </div>
+                
+                <!-- Footer -->
+                <div style="padding: 15px 25px; border-top: 1px solid #333; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="color: #666; font-size: 13px;">🎮 AutoGameVisionTester</div>
+                    <div>
+                        <button onclick="saveAllSettings()" class="btn">
+                            Save Changes
+                        </button>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+    <!-- Footer -->
+    <footer style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #333; text-align: center; color: #666; font-size: 13px;">
+        <p>
+            AutoGameVisionTester v0.3
+        </p>
+    </footer>
+</body>
+</html>

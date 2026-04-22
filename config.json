@@ -1,8 +1,9 @@
 {
-  "grok_api_key": "Placeholder",
+  "grok_api_key": "xai-4D2E2dxY1vQXAB3rAZ4EbV3yti13kvSIC4jPuxhL264VOAsN73mv4j742h8TrKRTngj1WFaqp259aYuw",
   "screenshot_interval": 2,
-  "game_window_title": "Trees Hate You",
+  "game_window_title": "Unreal Physics  ",
   "output_folder": "reports",
   "max_resolution": "1280x720",
-  "max_screenshots": 300
+  "max_screenshots": 300,
+  "model": "Grok-4"
 }

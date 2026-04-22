@@ -50,7 +50,6 @@ Choose 1. Preview Mode:
 
 ## 🔮 Future Plans (Phase 4)
 
-- Full bug/issue database with tagging and search.
 - Export reports to PDF.
 - Automatic test case generation.
 - Better analytics and trend tracking.

@@ -43,3 +43,4 @@ reports/
 # === Logs ===
 *.log
 history.json
+visiontester.log

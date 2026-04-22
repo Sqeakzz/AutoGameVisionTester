@@ -3,13 +3,20 @@ import requests
 import json
 
 def analyze_screenshot(image_path, api_key, resolution="1280x720", mode="balanced"):
-    """
-    Senior QA Tester prompt + JSON output
-    Works with any game engine (Unreal, Unity, Godot, etc.)
-    """
     try:
         with open(image_path, "rb") as f:
             base64_image = base64.b64encode(f.read()).decode("utf-8")
+
+        # Load model from config
+        try:
+            with open("config.json", "r") as f:
+                config = json.load(f)
+            selected_model = config.get("model", "grok-4")
+        except:
+            selected_model = "grok-4"
+
+        # This should be HERE (outside the try/except)
+        print(f"Using model: {selected_model}")
 
         headers = {
             "Authorization": f"Bearer {api_key}",
@@ -93,7 +100,6 @@ def analyze_screenshot(image_path, api_key, resolution="1280x720", mode="balance
             usage = result.get("usage", {})
             tokens_used = usage.get("total_tokens", 0)
 
-            # Clean and parse JSON
             try:
                 content = content.strip()
                 if content.startswith("```json"):
@@ -104,9 +110,9 @@ def analyze_screenshot(image_path, api_key, resolution="1280x720", mode="balance
                     "tokens_used": tokens_used,
                     "mode": mode
                 }
-            except Exception as e:
+            except:
                 return {
-                    "analysis": {"error": "JSON parse failed", "raw": content},
+                    "analysis": {"error": "JSON parse failed"},
                     "tokens_used": tokens_used,
                     "mode": mode
                 }
